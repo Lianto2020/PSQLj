@@ -1,0 +1,29 @@
+<!--
+modified from: django/forms/templates/django/forms/div.html 
+use 'bootstrap' classes
+-->
+
+{{ errors }}
+{% if errors and not fields %}
+  {% for field in hidden_fields %}
+  {{ field }}
+  {% endfor %}
+{% endif %}
+
+<div class="row">
+{% for field, errors in fields %}
+  <div class="col">
+    {{ errors }}
+    
+    {{ field }}
+    {% if forloop.last %}
+      {% for field in hidden_fields %}{{ field }}{% endfor %}
+    {% endif %}
+  </div>
+{% endfor %}
+</div>
+
+{% if not fields and not errors %}
+  {% for field in hidden_fields %}{{ field }}{% endfor %}
+{% endif %}
+

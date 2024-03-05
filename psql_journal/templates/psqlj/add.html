@@ -1,0 +1,9 @@
+{% extends "asite/base.html" %}
+
+{% block content %}
+<form action="{% url 'psqlj:add' %}" method="post">
+{% csrf_token %}
+{{ form }}
+<input type="submit" value="Input">
+</form>
+{% endblock %}

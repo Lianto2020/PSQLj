@@ -1,0 +1,15 @@
+<!--
+modified from: django/forms/templates/django/forms/div.html 
+use 'bootstrap' classes
+-->
+
+<div class="row">
+{% for field, errors in fields %}
+  <div class="col">
+    {{ errors }}
+    {{ field }}
+  </div>
+{% endfor %}
+</div>
+
+

@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html> 
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>{% block pagetitle %}JI{% endblock %}</title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="{% static "asite/css/bootstrap-4.3.1-dist.min.css" %}">
+  <link rel="stylesheet" href="{% static "asite/psqlj.css" %}">
+
+</head>
+
+<body>
+
+  <nav class="navbar navbar-expand-sm bg-dark navbar-dark fixed-top">
+    <a class="navbar-brand" href="#">.just.input</a>
+  </nav>
+
+  <div class="container mt-5 pt-3">
+  
+    <div class="row">
+  
+      <div id="sidebar-menu" class="col-md-4">
+        {% block sidebar %}
+        {% endblock %}
+      </div>
+
+      <div id="main-content" class="col-md-8">
+        {% block content %}
+        {% endblock %}
+      </div>
+
+    </div>
+
+    {% block help-modal %}
+    <div id="help-hidden-modal" hidden></div>
+    {% endblock %}
+
+  </div> <!-- container -->
+
+  <footer>
+    <!-- maybe some copyright -->
+  </footer>
+
+
+  <!-- 
+    jQuery (necessary) & Bootstrap core js
+    Placed at the end of the document so the pages load faster
+  -->
+  <script src="{% static "asite/js/jquery-3.7.1.slim.min.js" %}"></script>
+  <script src="{% static "asite/js/bootstrap-4.3.1-dist.min.js" %}"></script>
+
+  <script src="{% static "asite/psqlj.js" %}"></script>
+
+</body>
+</html>

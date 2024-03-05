@@ -1,0 +1,13 @@
+{% extends "asite/base.html" %}
+
+{% block content %}
+<form action="{% url 'psqlj:test2' %}" method="post">
+  {% csrf_token %}
+  {{ form }}
+  <div class="test-div">
+    {{ inlineformset }}
+  </div>
+<input type="submit" class="btn btn-primary" value="Submit">
+</form>
+{% endblock %}
+
