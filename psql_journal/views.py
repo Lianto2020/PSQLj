@@ -338,18 +338,12 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
     def get_context_data(self, **kwargs):
         """extend from parent"""
         
-        # we need context["form"] value, so lets execute super first
+        # inlineformset need context["form"] value, get context from super
         context = super().get_context_data(**kwargs)
 
-        # if 1st GET (creating new object) or POST
-        formset_kwargs = { "instance": context["form"].instance }
-        # else if we are editing an existing object
-        if self.request.method == "GET" and self.object:
-            formset_kwargs["instance"] = self.object 
-
-        # 1. Lets add inlineformset
+        # 1. add inlineformset to context
         if "inlineformset" not in context:
-            context["inlineformset"] = self.get_inline_formset(**formset_kwargs)
+            context["inlineformset"] = self.get_inline_formset(context)
 
         return context
 
@@ -389,12 +383,13 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
     def get_help_texts(self):
         return self.help_texts
 
-    def get_inline_formset(self, **extfsparams):
+    def get_inline_formset(self, context):
         if self.inline:
+        
             # Instantiate the inline model wrapper
             iw = self.inline()      
             Formset        = iw.create_formset(self.model)
-            formset_params = iw.get_formset_params(**extfsparams)
+            formset_params = iw.get_formset_params(context)
 
             return Formset(**formset_params)
 
@@ -420,11 +415,14 @@ class InlineModelFormMixin(FieldsetsModelFormMixin):
                     **self.get_createformset_kwargs()
                 )
 
-    def get_formset_params(self, **extparams):
-        params = {
-            "prefix": self.get_prefix(),
+    def get_formset_params(self, context):
+        """
+        Provide the standard parameters for a Formset class based on the context.
+        """
+        params = { 
+            "prefix"    : self.get_prefix(),
+            "instance"  : context["form"].instance,
         }
-        params.update(extparams)
         return params
 
 
