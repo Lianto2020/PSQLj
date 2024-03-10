@@ -11,3 +11,11 @@
 </form>
 {% endblock %}
 
+{% block sidebar %}
+  <h2>Transactions</h2>
+  <ul>
+    {% for transcation in object_list %}
+    <li>{{ transaction.tdate }}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

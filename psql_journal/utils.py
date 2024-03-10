@@ -6,7 +6,7 @@ from django.forms import (
 )
 
 class PhModelForm(ModelForm):
-    template_name = "psqlj/forms/form-test.html"
+    template_name = "psqlj/forms/psqlj-div.html"
 #    template_name_div = "psqlj/forms/div.html"
 
 

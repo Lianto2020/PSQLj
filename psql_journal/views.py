@@ -335,10 +335,28 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
     inline = None
     help_texts = None
     
-    def get_help_texts(self):
-        return self.help_texts
+    def get_context_data(self, **kwargs):
+        """extend from parent"""
+        
+        # we need context["form"] value, so lets execute super first
+        context = super().get_context_data(**kwargs)
+
+        # if 1st GET (creating new object) or POST
+        formset_kwargs = { "instance": context["form"].instance }
+        # else if we are editing an existing object
+        if self.request.method == "GET" and self.object:
+            formset_kwargs["instance"] = self.object 
+
+        # 1. Lets add inlineformset
+        if "inlineformset" not in context:
+            context["inlineformset"] = self.get_inline_formset(**formset_kwargs)
+
+        return context
+
 
     def get_form_class(self):
+        """override ModelFormMixin's get_form_class()"""
+
         if self.model is not None:
             model = self.model
         elif getattr(self, "object", None) is not None:
@@ -367,12 +385,15 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
                 % (e, self.__class__.__name__)
             )
 
+    ##
+    def get_help_texts(self):
+        return self.help_texts
 
     def get_inline_formset(self, **extfsparams):
         if self.inline:
             # Instantiate the inline model wrapper
             iw = self.inline()      
-            Formset        = iw.create_formset()
+            Formset        = iw.create_formset(self.model)
             formset_params = iw.get_formset_params(**extfsparams)
 
             return Formset(**formset_params)
@@ -380,21 +401,6 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
         return None
 
 
-    def get_context_data(self, **kwargs):
-        
-        # we need context["form"] value, so lets execute super first
-        context = super().get_context_data(**kwargs)
-
-        formset_kwargs = { 
-            "instance": context["form"].instance, 
-        }
-        # if we are editing an existing object
-        if self.request.method == "GET" and self.object:
-            formset_kwargs["instance"] = self.object 
-
-        if "inlineformset" not in context:
-            context["inlineformset"] = self.get_inline_formset(**formset_kwargs)
-        return context
 
 
 class InlineModelFormMixin(FieldsetsModelFormMixin):
@@ -404,8 +410,57 @@ class InlineModelFormMixin(FieldsetsModelFormMixin):
 
     _default_fkfield = None
 
+    def create_formset(self, master_model=None):
+        if master_model is None:
+            master_model = self.get_master_model()
+
+        return ph_inlineformset_factory(
+                    master_model,
+                    self.model,
+                    **self.get_createformset_kwargs()
+                )
+
+    def get_formset_params(self, **extparams):
+        params = {
+            "prefix": self.get_prefix(),
+        }
+        params.update(extparams)
+        return params
+
+
+    def get_allinlines_of(self, master_obj):
+        queryset = self.get_queryset()
+
+        origin_fkname = self.get_default_fk_name()
+        queryset = queryset.filter(**{origin_fkname: master_obj})
+
+        return list(queryset)
+
+    ##
+    def get_master_model(self):
+        """
+        Return remote model of the first ForeignKey field.
+        """
+        if self._default_fkfield is None:
+            self._get_default_fk_field()
+        return self._default_fkfield.remote_field.model
+
+
+    def get_createformset_kwargs(self):
+        kwargs = {
+            "fk_name" : self.get_fk_name(),
+            "fields"  : self.get_fields(),
+            "extra"   : self.get_extra(),
+            "can_delete_extra": False,
+        }
+        return kwargs
+
+
     def get_fk_name(self):
         return self.fk_name
+
+    def get_extra(self):
+        return self.extra
 
     def _get_default_fk_field(self):
         """Save the first Foreign Key field."""
@@ -420,51 +475,6 @@ class InlineModelFormMixin(FieldsetsModelFormMixin):
         if self._default_fkfield is None:
             self._get_default_fk_field()
         return self._default_fkfield.name
-
-    def get_extra(self):
-        return self.extra
-
-    def get_master_model(self):
-        """
-        Return remote model of the first ForeignKey field.
-        Currently using auto-finding. 
-        Another implementation is give the parent_model as arg.
-        """
-        if self._default_fkfield is None:
-            self._get_default_fk_field()
-        return self._default_fkfield.remote_field.model
-
-
-    def create_formset(self):
-        return ph_inlineformset_factory(
-                    self.get_master_model(),
-                    self.model,
-                    **self.get_createformset_kwargs()
-                )
-
-    def get_createformset_kwargs(self):
-        kwargs = {
-            "fk_name" : self.get_fk_name(),
-            "fields"  : self.get_fields(),
-            "extra"   : self.get_extra(),
-            "can_delete_extra": False,
-        }
-        return kwargs
-
-    def get_formset_params(self, **extparams):
-        params = {
-            "prefix": self.get_prefix(),
-        }
-        params.update(extparams)
-        return params
-
-    def get_allinlines_of(self, master_obj):
-        queryset = self.get_queryset()
-
-        origin_fkname = self.get_default_fk_name()
-        queryset = queryset.filter(**{origin_fkname: master_obj})
-
-        return list(queryset)
 
 
 class ProcessMasterFormView(View):
@@ -499,6 +509,10 @@ class InlineModelWrapper(InlineModelFormMixin):
         return kwargs
 
 
+class ListObjectWrapper(MultipleObjectMixin):
+    model = Transaction
+
+
 class MasterCreateView(TemplateResponseMixin, BaseMasterCreateView):
     model = Transaction
     fields = ["tdate", "desc"]
@@ -508,4 +522,6 @@ class MasterCreateView(TemplateResponseMixin, BaseMasterCreateView):
         }
     template_name = "psqlj/psqlj_createview.html"
     inline = InlineModelWrapper
+    listobject = ListObjectWrapper
+    
 
