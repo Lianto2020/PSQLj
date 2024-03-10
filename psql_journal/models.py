@@ -1,9 +1,5 @@
 from django.db import models
 
-class TwoInputFields(models.Model):
-    str1 = models.CharField(max_length=50)
-    str2 = models.CharField(max_length=50)
-
 
 class Transaction(models.Model):
     """

@@ -1,27 +1,21 @@
 from django.shortcuts import render
 from django.urls import reverse_lazy
+from django.http import Http404
 from django.core.exceptions import ImproperlyConfigured
 
-from django.views.generic.edit import CreateView, ModelFormMixin
-from django.views.generic import ListView
-from django.views.generic.base import ContextMixin, TemplateResponseMixin, View
+from django.views.generic.base import (
+    ContextMixin, 
+    TemplateResponseMixin, 
+    View,
+)
+from django.views.generic.edit import ModelFormMixin
 from django.views.generic.list import MultipleObjectMixin
 
-from django.forms import (
-    modelformset_factory, 
-    modelform_factory, 
-    inlineformset_factory,
-)
-
-from .models import (
-    TwoInputFields, 
-    Transaction, 
-    TransactionRecord,
-)
 from django.contrib.admin.utils import flatten_fieldsets
 from django.db.models import ForeignKey
-from django.http import Http404
 
+##
+from .models import Transaction, TransactionRecord
 from .utils import ph_modelform_factory, ph_inlineformset_factory
 
 
@@ -29,289 +23,11 @@ def index(request):
     return render(request, "psqlj/index.html", {})
 
 
-class TwoInputCreateView(CreateView):
-    model = TwoInputFields
-    fields = ["str1", "str2"]
-    template_name = "psqlj/add.html"
-    success_url = reverse_lazy("psqlj:list")
-
-    
-class TwoInputListView(ListView):
-    model = TwoInputFields
-    template_name = "psqlj/list.html"
-
-
-
-##############
-# a Formset CreateView
-#TODO: formset_valid() and formset_invalid()
-
-class FormsetMixin(ContextMixin):
-
-    initial = {}
-    formset_class = None
-    success_url = None
-    prefix = None
-
-    def get_initial(self):
-        return self.initial.copy()
-
-    def get_prefix(self):
-        return self.prefix
-
-    def get_formset_class(self):
-        return self.formset_class
-
-    def get_formset(self, formset_class=None):
-        if formset_class is None:
-            formset_class = self.get_formset_class()
-        return formset_class(**self.get_formset_kwargs())
-
-    def get_formset_kwargs(self):
-        kwargs = {
-            "initial"   : self.get_initial(),
-            "prefix"    : self.get_prefix(),
-        }
-        if self.request.method in ("POST", "PUT"):
-            kwargs.update(
-                {
-                    "data": self.request.POST,
-                    "files": self.request.FILES,
-                }
-            )
-        return kwargs
-
-    def get_success_url(self):
-        if not self.success_url:
-            raise ImproperlyConfigured("No URL to redirect to. Provide a success_url.")
-        return str(self.success_url)
-
-    def form_valid(self, formset):
-        return HttpResponseRedirect(self.get_success_url())
-
-    def form_invalid(self, formset):
-        return self.render_to_response(self.get_context_data(formset=formset))
-
-    def get_context_data(self, **kwargs):
-        if "formset" not in kwargs:
-            kwargs["formset"] = self.get_formset()
-        return super().get_context_data(**kwargs)
-
-
-class ModelFormsetMixin(FormsetMixin):
-    fields = None
-
-    def get_formset_class(self):
-        if self.fields is not None and self.formset_class:
-            raise ImproperlyConfigured("Specifying both 'fields' and 'formset_class' is not permitted."
-            )
-        if self.formset_class:
-            return self.formset_class
-        else:
-            if self.model is not None:
-                model = self.model
-            else:
-                model = self.get_queryset().model
-
-            if self.fields is None:
-                raise ImproperlyConfigured(
-                    "Using ModelFormsetMixin without "
-                    "the 'fields' attribute is prohibited."
-                )
-            return modelformset_factory(model, **self.get_modelformset_factory_kwargs())
-
-    def get_modelformset_factory_kwargs(self):
-        kwargs = {
-            "fields": self.fields,
-        }
-        return kwargs
-
-
-class ProcessFormsetView(View):
-    def get(self, request, *args, **kwargs):
-        return self.render_to_response(self.get_context_data())
-
-    def post(self, request, *args, **kwargs):
-        formset = self.get_formset()
-        if formset.is_valid():
-            return self.form_valid(formset)
-        else:
-            return self.form_invalid(formset)
-
-    def put(self, *args, **kwargs):
-        return self.post(*args, **kwargs)
-    
-
-class BaseMultipleCreateView(ModelFormsetMixin, ProcessFormsetView):
-    """Base view to create mulitple objects."""
-    extra = 10
-    max_num = 10
-
-    def get_modelformset_factory_kwargs(self):
-        kwargs = super().get_modelformset_factory_kwargs()
-        kwargs.update(
-            {
-                "extra" : self.extra,
-                "max_num" : self.max_num,
-            }
-        )
-        return kwargs
-
-class TwoInputMultipleCreateView(TemplateResponseMixin, BaseMultipleCreateView):
-    """Finally, a View to create multiple objects."""
-
-    model = TwoInputFields
-    fields = ["str1", "str2"]
-    template_name = "psqlj/multiple_add.html"
-    success_url = reverse_lazy("psqlj:list")
-
-    def get_formset_kwargs(self):
-        """ 
-        BaseModelFormSet will fill the existing values to input elements 
-        according to the model's queryset when it contruct the form. 
-        This is useful when we want to edit values.
-        But we want to create new ones here, so set queryset to none.
-        """
-        kwargs = super().get_formset_kwargs()
-        if self.request.method == "GET":
-            kwargs.update(
-                {
-                    "queryset": TwoInputFields.objects.none(),
-                }
-            )
-        return kwargs
-
 ######################
 # TODO:
 #  make the Mixin classes so it can be used with Dates Mixins
 
-# a "Many To One" CreateView, 
-#   take 1 parent model(One) and 1 child model(Many), 
-#   so the user only need to focus on the template (UI presentation)
 
-# PLAN:
-#  needed functionality from:
-#   TemplateResponseMixin
-#   ContextMixin
-#    FormMixin (lack INLINES)
-#    SingleObjectMixin (lack INLINES)
-#     ModelFormMixin (lack INLINES)
-#   View
-#    ProcessFormView (need to modify??)
-#
-
-class TmpFieldsetsMixin(ModelFormMixin):
-    fieldsets = None
-    object = None
-
-    def get_fields(self):
-        if self.fieldsets:
-            return flatten_fieldsets(self.fieldsets)
-        return self.fields
-
-    def get_fieldsets(self):
-        if self.fieldsets:
-            return self.fieldsets
-        return [(None, {"fields": self.get_fields()})]
-
-
-
-class MainFormMixin(TmpFieldsetsMixin):
-    inline = None            # one inline class
-
-    #def get_inlines(self):
-    #    return self.inlines
-
-    def get_form_class(self):
-        if self.model is not None:
-            model = self.model
-        elif getattr(self, "object", None) is not None:
-            model = self.object.__class__
-        else:
-            model = self.get_queryset().model
-
-        fields = self.get_fields()
-        if self.fields is None:
-            raise ImproperlyConfigured(
-                "Define either 'fieldsets' or 'fields' to use "
-                "CompleteFormMixin (base class of %s)." 
-                % self.__class__.__name__
-            )
-
-        try:
-            return modelform_factory(model, fields=fields)
-        except FieldError as e:
-            raise FieldError(
-                "%s. Check fieldsets/fields attributes of class %s."
-                % (e, self.__class__.__name__)
-            )
-
-    def create_formsets(self):
-        if self.inline:
-            inline = self.inline()
-            Formset = inline.get_formset()
-            formset_params = inline.get_formset_kwargs()
-
-            formset = Formset(**formset_params)
-            return formset
-
-        return None
-            
-
-class InlineFormsetMixin(TmpFieldsetsMixin):
-    parent_model = None
-    fk_name = None
-    extra = 5
-
-    prefix = None
-
-    def get_formset(self, **kwargs):
-        defaults = {
-            "fk_name" : self.fk_name,
-            "extra" : self.extra,
-            "fields": self.get_fields(),
-            **kwargs,
-        }
-        return inlineformset_factory(self.parent_model, self.model, **defaults) 
-
-    def get_formset_kwargs(self, **kwargs_ext):
-        kwargs = {
-            "prefix": self.prefix,
-
-        }
-        kwargs.update(kwargs_ext)
-        return kwargs
-
-
-class ProcessMainFormView(View):
-
-    def get(self, request, *args, **kwargs):
-        nkwargs = {
-            "form": self.get_form(),
-            "formset": self.create_formsets(),
-        }
-        return self.render_to_response(self.get_context_data(**nkwargs))
-
-
-class BaseMainFormView(MainFormMixin, ProcessMainFormView):
-    """A Base view for testing"""
-
-class InlineFormset(InlineFormsetMixin):
-    model = TransactionRecord
-    fields = ["account", "amount"]
-    parent_model = Transaction
-
-class MainFormView(TemplateResponseMixin, BaseMainFormView):
-    model = Transaction
-    fields = ["tdate", "desc"]
-    template_name = "psqlj/mainform_test.html"
-    inline = InlineFormset
-
-
-#####################################
-#####################################
-#####################################
-# to import: SingleObjectMixin, models.ForeignKey
 
 class FieldsetsModelFormMixin(ModelFormMixin):
     """Add and prioritize fieldsets."""
