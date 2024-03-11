@@ -1,7 +1,10 @@
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.http import Http404
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    FieldError,
+)
 
 from django.views.generic.base import (
     ContextMixin, 
@@ -238,4 +241,98 @@ class MasterCreateView(TemplateResponseMixin, BaseMasterCreateView):
     inline = InlineModelWrapper
     listobject = ListObjectWrapper
     
+
+########################
+########################
+
+class Subview:
+    def __init__(self, request, **kwargs):
+        self.request = request
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                raise TypeError(
+                    "%s() received an invalid keyword %r."
+                    "It only accepts arguments that are already "
+                    "attributes of the class." % (self.__class__, key)
+                
+            setattr(self, key, value)
+
+
+class ModelFormSubview(ModelFormMixin, Subview):
+    help_texts = None
+
+
+    def get_form_class(self):
+        """override ModelFormMixin's get_form_class()"""
+
+        if self.model is not None:
+            model = self.model
+        elif getattr(self, "object", None) is not None:
+            model = self.object.__class__
+        else:
+            model = self.get_queryset().model
+
+        if self.fields is None:
+            raise ImproperlyConfigured(
+                "Define either 'fieldsets' or 'fields' to use "
+                "MasterModelFormMixin (base class of %s)." 
+                % self.__class__.__name__
+            )
+
+        try:
+            return ph_modelform_factory(
+                    model, 
+                    fields=self.fields,
+                    help_texts=self.get_help_texts(),
+            )
+
+        except FieldError as e:
+            raise FieldError(
+                "%s. Check fieldsets/fields attributes of class %s."
+                % (e, self.__class__.__name__)
+            )
+
+    ##
+    def get_help_texts(self):
+        return self.help_texts
+
+
+class InlineModelFormSubview(InlineModelFormMixin):
+    model = None
+
+    def get_context_data(self, **kwargs):
+        pass
+
+
+class ModelListSubview(MultipleObjectMixin):
+    model = None
+
+    def get_context_data(self, **kwargs):
+        pass
+
+
+class ViewOne(TemplateResponseMixin, View, ContextMixin):
+    model_subview = None
+    inline_model = None
+    model_list = None
+    template_name = ""
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        if model_subview is not None:
+            msv = model_subview(self.request)
+            context.update(msv.get_context_data())
+
+        if inline_model is not None:
+            # idem
+
+        if model_list is not None:
+            # idem
+
+    def get(self):
+        pass
+
+    def post(self):
+        pass
 
