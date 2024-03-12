@@ -57,9 +57,12 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
         # inlineformset need context["form"] value, get context from super
         context = super().get_context_data(**kwargs)
 
-        # 1. add inlineformset to context
+        # 1. add inlineformset
         if "inlineformset" not in context:
             context["inlineformset"] = self.get_inline_formset(context)
+
+        # 2. add object_list
+        context["object_list"] = self.model._default_manager.all()[0:9]
 
         return context
 
@@ -75,7 +78,7 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
             model = self.get_queryset().model
 
         fields = self.get_fields()
-        if self.fields is None:
+        if fields is None:
             raise ImproperlyConfigured(
                 "Define either 'fieldsets' or 'fields' to use "
                 "MasterModelFormMixin (base class of %s)." 
@@ -223,9 +226,6 @@ class InlineModelWrapper(InlineModelFormMixin):
         return kwargs
 
 
-class ListObjectWrapper(MultipleObjectMixin):
-    model = Transaction
-
 
 class MasterCreateView(TemplateResponseMixin, BaseMasterCreateView):
     model = Transaction
@@ -236,6 +236,5 @@ class MasterCreateView(TemplateResponseMixin, BaseMasterCreateView):
         }
     template_name = "psqlj/psqlj_createview.html"
     inline = InlineModelWrapper
-    listobject = ListObjectWrapper
     
 
