@@ -59,7 +59,8 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
 
         # 1. add inlineformset
         if "inlineformset" not in context:
-            context["inlineformset"] = self.get_inline_formset(context)
+            obj = context["form"].instance
+            context["inlineformset"] = self.get_inline_formset(obj)
 
         # 2. add object_list
         context["object_list"] = self.model._default_manager.all()[0:9]
@@ -102,15 +103,18 @@ class MasterModelFormMixin(FieldsetsModelFormMixin):
     def get_help_texts(self):
         return self.help_texts
 
-    def get_inline_formset(self, context):
+    def get_inline_formset(self, parent_obj):
         if self.inline:
         
             # Instantiate the inline model wrapper
             iw = self.inline()      
-            Formset        = iw.create_formset(self.model)
-            formset_params = iw.get_formset_params(context)
+            Formset = iw.create_formset(self.model)
 
-            return Formset(**formset_params)
+            return Formset(**iw.get_formset_kwargs(
+                                self.request, 
+                                parent_obj,
+                            )
+                    )
 
         return None
 
@@ -134,14 +138,22 @@ class InlineModelFormMixin(FieldsetsModelFormMixin):
                     **self.get_createformset_kwargs()
                 )
 
-    def get_formset_params(self, context):
+    def get_formset_kwargs(self, request, parent_obj):
         """
         Provide the standard parameters for a Formset class based on the context.
         """
         params = { 
             "prefix"    : self.get_prefix(),
-            "instance"  : context["form"].instance,
+            "instance"  : parent_obj,
         }
+        if request.method == "POST":
+            params.update(
+                {
+                    "data": request.POST,
+                    "files": request.FILES,
+                }
+            )
+
         return params
 
 
@@ -201,7 +213,22 @@ class ProcessMasterFormView(View):
         return self.render_to_response(self.get_context_data())
 
     def post(self, request, *args, **kwargs):
-        raise Http404("Post not ready yet")
+        form = self.get_form()
+        formset = self.get_inline_formset(form.instance)
+
+        form_validated = form.is_valid()
+
+
+#        if form.is_valid():
+#            if formset and formset.is_valid():
+#                return self.form_valid(form, formset)
+#            else:
+#                return self.form_invalid(form)
+#            return self.form_valid(form)
+#        else:
+#            return self.form_invalid(form, formset)
+
+
 
     def put(self, *args, **kwargs):
         return self.post(*args, **kwargs)
