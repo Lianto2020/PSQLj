@@ -4,9 +4,9 @@ from . import views
 
 app_name = "psqlj"
 urlpatterns = [
-    path("", views.index, name="index"),
+#    path("", views.index, name="index"),
 
-    path("test2/", views.MasterCreateView.as_view(), name="test2"),
+    path("", views.MasterCreateView.as_view(), name="index"),
 ]
 
 

@@ -1,11 +1,11 @@
 {% extends "asite/base.html" %}
 
 {% block content %}
-<form action="{% url 'psqlj:test2' %}" method="post">
+<form action="" method="post">
   {% csrf_token %}
   {{ form }}
   <div class="test-div">
-    {{ inlineformset }}
+    {{ formset }}
   </div>
 <input type="submit" class="btn btn-primary" value="Submit">
 </form>
@@ -14,8 +14,8 @@
 {% block sidebar %}
   <h2>Transactions</h2>
   <ul>
-    {% for transcation in object_list %}
-    <li>{{ transaction.tdate }}</li>
+    {% for t in object_list %}
+    <li>{{ t.desc }}</li>
     {% endfor %}
   </ul>
 {% endblock %}
