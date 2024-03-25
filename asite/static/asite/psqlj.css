@@ -1,9 +1,11 @@
-/* psql-journal styles */
+/* vim: set sw=2 ts=2 expandtab:
+ * psql-journal styles */
 
 body {
-	font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-family: Roboto, Helvetica, Arial, sans-serif;
 }
 
-div {
-	color: DarkGoldenRod;
+.title {
+  color: SteelBlue;
 }
+

@@ -10,7 +10,7 @@
 
   <!-- Bootstrap -->
   <link rel="stylesheet" href="{% static "asite/css/bootstrap-4.3.1-dist.min.css" %}">
-  <link rel="stylesheet" href="{% static "asite/psqlj.css" %}">
+  <link rel="stylesheet" href="{% static "asite/psqlj.css" %}?v=0.1">
 
 </head>
 
@@ -24,12 +24,12 @@
   
     <div class="row">
   
-      <div id="sidebar-menu" class="col-md-4">
+      <div id="sidebar-menu" class="col-md-4 ml-n5 border-right">
         {% block sidebar %}
         {% endblock %}
       </div>
 
-      <div id="main-content" class="col-md-8">
+      <div id="main-content" class="col-md-8 ml-5">
         {% block content %}
         {% endblock %}
       </div>

@@ -12,10 +12,10 @@
 {% endblock %}
 
 {% block sidebar %}
-  <h2>Transactions</h2>
-  <ul>
+  <h5 class="bg-light font-weight-bold title">Transactions</h5>
+  <ul class="list-group list-group-flush">
     {% for t in object_list %}
-    <li>{{ t.desc }}</li>
+    <li class="list-group-item py-1">{{ t.desc }}</li>
     {% endfor %}
   </ul>
 {% endblock %}
