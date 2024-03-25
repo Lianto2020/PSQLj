@@ -8,14 +8,19 @@ from django.contrib.admin.utils import flatten_fieldsets
 from django.urls import reverse
 from django.http import HttpResponseRedirect
 
+from django.forms.models import modelform_factory, inlineformset_factory
+from django.forms import fields as ff
+from django.forms import widgets as fw
+
 ##
 from .models import Transaction, TransactionRecord
-from .utils import ph_modelform_factory, ph_inlineformset_factory
+from .utils import PhModelForm
+#from .utils import ph_modelform_factory, ph_inlineformset_factory
 
 
 def index(request):
     return render(request, "psqlj/index.html", {})
-
+i
 
 ######################
 # TODO:
@@ -28,7 +33,6 @@ class PhModelFormMixin(ModelFormMixin):
     which use help_text as help label.
     """
     fieldsets = None
-    help_texts = None
     
 
     def get_context_data(self, **kwargs):
@@ -42,41 +46,32 @@ class PhModelFormMixin(ModelFormMixin):
 
 
     def get_form_class(self):
-        """override ModelFormMixin's get_form_class()"""
-
-        if self.model is not None:
-            model = self.model
-        elif getattr(self, "object", None) is not None:
-            model = self.object.__class__
-        else:
-            model = self.get_queryset().model
+        """modification of ModelFormMixin's get_form_class()"""
 
         fields = self.get_fields()
-        if fields is None:
-            raise ImproperlyConfigured(
-                "Define either 'fieldsets' or 'fields' to use "
-                "PhModelFormMixin (base class of %s)." 
-                % self.__class__.__name__
-            )
+        if fields is not None and self.form_class:
+            raise ImproperlyConfigured("Specifying both 'fields' and 'form_class' is not permitted.")
+        
+        if self.form_class:
+            return self.form_class
+        else:
+            if self.model is not None:
+                model = self.model
+            elif getattr(self, "object", None) is not None:
+                model = self.object.__class__
+            else:
+                model = self.get_queryset().model
 
-        try:
-            return ph_modelform_factory(
-                    model, 
-                    fields=fields,
-                    help_texts=self.get_help_texts(),
-            )
+            if fields is None:
+                raise ImproperlyConfigured(
+                    "Define either 'fieldsets' or 'fields' to use "
+                    "PhModelFormMixin (base class of %s)." % self.__class__.__name__
+                )
 
-        except FieldError as e:
-            raise FieldError(
-                "%s. Check fieldsets/fields attributes of class %s."
-                % (e, self.__class__.__name__)
-            )
+            return forms.modelform_factory(model, fields=fields)
+
 
     ##
-    def get_help_texts(self):
-        return self.help_texts
-
-
     def get_fields(self):
         if self.fieldsets:
             return flatten_fieldsets(self.fieldsets)
@@ -164,6 +159,16 @@ class BasePhCreateView(TemplateResponseMixin,
                     ))
 
 
+class MasterCreateForm(PhModelForm):
+    tdate = ff.DateField(widget=fw.DateInput(attrs={"class": "form-control"}
+                                            )
+                        )
+    desc = form_fields.CharField()
+
+    class Meta:
+        model = Transaction
+        fields = ["tdate", "desc"]
+
 class MasterCreateView(BasePhCreateView):
     model = Transaction
     fields = ["tdate", "desc"]
@@ -175,17 +180,17 @@ class MasterCreateView(BasePhCreateView):
    
 
     def create_inline_formset(self):
-        return ph_inlineformset_factory(
-                    Transaction,
-                    TransactionRecord,
-                    fields      = ['account', 'amount', 'record_num'],
-                    extra       = 2,
-                    help_texts  = {
-                        "account": "Account no...",
-                        "amount" : "Amount...",
-                    },
-                    can_delete_extra = False,
-                )
+        # return ph_inlineformset_factory(
+        #             Transaction,
+        #             TransactionRecord,
+        #             fields      = ['account', 'amount', 'record_num'],
+        #             extra       = 2,
+        #             help_texts  = {
+        #                 "account": "Account no...",
+        #                 "amount" : "Amount...",
+        #             },
+        #             can_delete_extra = False,
+        #         )
    
     def get_success_url(self):
        return reverse("psqlj:index")
