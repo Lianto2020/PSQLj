@@ -10,18 +10,20 @@ use 'bootstrap' classes
   {% endfor %}
 {% endif %}
 
-<div class="row form-group">
-{% for field, errors in fields %}
-  <div class="col">
-    {{ errors }}
-    
-    {{ field }}
-    {% if forloop.last %}
-      {% for field in hidden_fields %}{{ field }}{% endfor %}
-    {% endif %}
+{% block form_main_content %}
+  <div class="row form-group">
+  {% for field, errors in fields %}
+    <div class="col">
+      {{ errors }}
+      
+      {{ field }}
+      {% if forloop.last %}
+        {% for field in hidden_fields %}{{ field }}{% endfor %}
+      {% endif %}
+    </div>
+  {% endfor %}
   </div>
-{% endfor %}
-</div>
+{% endblock %}
 
 {% if not fields and not errors %}
   {% for field in hidden_fields %}{{ field }}{% endfor %}
